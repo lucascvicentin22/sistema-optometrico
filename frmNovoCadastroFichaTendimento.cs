@@ -1,17 +1,6 @@
-﻿using iText.Kernel.Pdf;
-using MySql.Data.MySqlClient;
 using System;
 using System.Data;
 using System.Windows.Forms;
-using System.IO;
-using System.Diagnostics;
-using iText.Kernel.Geom;
-using iText.Kernel.Pdf.Canvas;
-using iText.IO.Image;
-using iText.Layout;
-using iText.Layout.Properties;
-using iText.Layout.Element;
-using iTextSharp.text;
 using iTextParagraph = iText.Layout.Element.Paragraph;
 using iTextSharpParagraph = iTextSharp.text.Paragraph;
 // Alias para desambiguar PageSize
@@ -21,7 +10,7 @@ using System.Globalization;
 using iText.StyledXmlParser.Jsoup.Nodes;
 using SistemaOptometrico;
 using System.Collections.Generic;
-
+using MySqlConnector;
 
 namespace SistemaOptometrico
 
@@ -30,9 +19,7 @@ namespace SistemaOptometrico
     {
         private ContextMenuStrip contextMenuStrip1;
         private int idExameSelecionado = -1; // -1 ou outro valor que indique que nenhum exame foi selecionado ainda
-        private string connectionString = "Server=localhost;Database=db_clinica;User ID=root;Password=2707;";
-
-
+        private Conexao conexao = new Conexao();
         public frmNovoCadastroFichaTendimento()
         {
             InitializeComponent();
@@ -142,12 +129,14 @@ namespace SistemaOptometrico
                                 else
                                 {
                                     LimparCamposCliente(); // Se não encontrar o cliente
+                                   
                                 }
                             }
                         }
 
                         // Buscar os exames do cliente
                         BuscarExamesPorCliente(idCliente);
+                       
                     }
                     catch (Exception ex)
                     {
@@ -173,6 +162,7 @@ namespace SistemaOptometrico
             txtESCOLARIDADE.Text = string.Empty;
             cbNome.Text = string.Empty;
             cbEndereco.Text = string.Empty;
+
         }
         private void btnSALVAR_Click(object sender, EventArgs e)
         {
@@ -327,7 +317,6 @@ namespace SistemaOptometrico
             // Chama o método para atualizar o DataGridView com o idCliente
             AtualizarDataGridView(idCliente);
         }
-
         private void AtualizarDataGridView(int idCliente)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
