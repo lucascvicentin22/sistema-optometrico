@@ -87,10 +87,7 @@ namespace SistemaOptometrico
                 {
                     try
                     {
-                        // Criar uma instância da classe Conexao
                         Conexao conexao = new Conexao();
-
-                        // Query para buscar os dados do cliente
                         string queryCliente = @"
                     SELECT p.nome_completo, p.nascimento, p.idade, p.profissao, p.escolaridade, 
                            e.id_consultorio, c.nome AS nome_consultorio, c.endereco AS endereco_consultorio 
@@ -99,11 +96,12 @@ namespace SistemaOptometrico
                     LEFT JOIN tb_consultorio c ON e.id_consultorio = c.id_consultorio
                     WHERE p.id_cliente = @id_cliente";
 
-                        // Usar o método BuscarDados da classe Conexao
-                        DataTable clienteData = conexao.BuscarDados(queryCliente);
+                        MySqlParameter[] parametros = new MySqlParameter[]
+                        {
+                    new MySqlParameter("@id_cliente", idCliente)
+                        };
 
-                        // Adicionar o parâmetro à consulta
-                        conexao.ExecuteQuery(queryCliente, new MySqlParameter("@id_cliente", idCliente));
+                        DataTable clienteData = conexao.BuscarDados(queryCliente, parametros);
 
                         if (clienteData.Rows.Count > 0)
                         {
@@ -133,6 +131,7 @@ namespace SistemaOptometrico
                         else
                         {
                             LimparCamposCliente(); // Se não encontrar o cliente
+                            MessageBox.Show("Cliente não encontrado.");
                         }
 
                         // Buscar os exames do cliente
@@ -146,6 +145,7 @@ namespace SistemaOptometrico
                 else
                 {
                     LimparCamposCliente(); // Se o ID não for válido
+                    MessageBox.Show("ID do cliente inválido.");
                 }
             }
             else
