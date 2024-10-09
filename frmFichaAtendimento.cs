@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Windows.Forms;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace SistemaOptometrico
 {
     public partial class frmFichaAtendimento : Form
     {
-        private string connectionString = "Server=localhost;Database=db_clinica;User ID=root;Password=2707;";
+        private Conexao conexao = new Conexao();
         private int selectedId; // Para armazenar o ID do registro selecionado
 
         public frmFichaAtendimento()
@@ -20,32 +20,18 @@ namespace SistemaOptometrico
 
         private void LoadData()
         {
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            using (MySqlConnection connection = conexao.GetConnection())
             {
                 try
                 {
                     connection.Open();
                     string query = "SELECT * FROM tb_precadastro";
-                    MySqlDataAdapter adapter = new MySqlDataAdapter(query, connection);
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+                    MySqlDataAdapter adapter = new MySqlDataAdapter(cmd);
                     DataTable dataTable = new DataTable();
                     adapter.Fill(dataTable);
                     dataGridView1.DataSource = dataTable;
 
-                    // Ajustar manualmente o tamanho das colunas
-                    dataGridView1.Columns["id_cliente"].Width = 40;
-                    dataGridView1.Columns["nome_completo"].Width = 150;
-                    dataGridView1.Columns["cpf"].Width = 100;
-                    dataGridView1.Columns["nascimento"].Width = 100;
-                    dataGridView1.Columns["idade"].Width = 40;
-                    dataGridView1.Columns["whatsapp"].Width = 120;
-                    dataGridView1.Columns["rua"].Width = 150;
-                    dataGridView1.Columns["bairro"].Width = 100;
-                    dataGridView1.Columns["cidade"].Width = 100;
-                    dataGridView1.Columns["profissao"].Width = 100;
-                    dataGridView1.Columns["escolaridade"].Width = 100;
-                    dataGridView1.Columns["sexo"].Width = 40;
-
-                    // Alterar os nomes das colunas para letras maiúsculas
                     dataGridView1.Columns["id_cliente"].HeaderText = "ID";
                     dataGridView1.Columns["nome_completo"].HeaderText = "NOME COMPLETO";
                     dataGridView1.Columns["cpf"].HeaderText = "CPF";
@@ -65,7 +51,6 @@ namespace SistemaOptometrico
                 }
             }
         }
-
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
@@ -75,7 +60,6 @@ namespace SistemaOptometrico
                 // Verificar se a célula clicada é a célula do ID
                 if (e.ColumnIndex == dataGridView1.Columns["id_cliente"].Index)
                 {
-                    // Copiar o valor da célula do ID para a área de transferência
                     Clipboard.SetText(row.Cells["id_cliente"].Value.ToString());
                     MessageBox.Show("ID copiado para a área de transferência.");
                 }
@@ -94,6 +78,7 @@ namespace SistemaOptometrico
                 txtESCOLARIDADE.Text = row.Cells["escolaridade"].Value.ToString();
                 txtSEXO.Text = row.Cells["sexo"].Value.ToString();
 
+
                 // Armazenar o ID do registro selecionado
                 selectedId = Convert.ToInt32(row.Cells["id_cliente"].Value);
             }
@@ -101,80 +86,59 @@ namespace SistemaOptometrico
 
         private void btnSalvar_Click(object sender, EventArgs e)
         {
-            // Verificar se há um ID selecionado
             if (selectedId == 0)
             {
                 MessageBox.Show("Selecione um registro para editar.");
                 return;
             }
 
-            // Converter a data do formato dd/MM/yyyy para YYYY-MM-DD
             DateTime nascimento;
             if (!DateTime.TryParseExact(txtNASCIMENTO.Text, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out nascimento))
             {
-                MessageBox.Show("O formato da data de nascimento está incorreto. Use o formato dd/MM/yyyy.");
+                MessageBox.Show("Formato de data incorreto. Use dd/MM/yyyy.");
                 return;
             }
 
-            // Converter a data para o formato YYYY-MM-DD
             string nascimentoFormatado = nascimento.ToString("yyyy-MM-dd");
 
-            // Validar se a data formatada está correta para o tipo DATE
-            if (nascimentoFormatado.Length != 10 || !DateTime.TryParseExact(nascimentoFormatado, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out _))
-            {
-                MessageBox.Show("A data de nascimento não está no formato correto.");
-                return;
-            }
-
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            using (MySqlConnection connection = conexao.GetConnection())
             {
                 try
                 {
                     connection.Open();
                     string query = @"
-                UPDATE tb_precadastro
-                SET nome_completo = @nome_completo,
-                    cpf = @cpf,
-                    nascimento = @nascimento,
-                    idade = @idade,
-                    whatsapp = @whatsapp,
-                    rua = @rua,
-                    bairro = @bairro,
-                    cidade = @cidade,
-                    profissao = @profissao,
-                    escolaridade = @escolaridade,
-                    sexo = @sexo
-                WHERE id_cliente = @id_cliente";
+                        UPDATE tb_precadastro SET 
+                        nome_completo = @nome_completo,
+                        cpf = @cpf,
+                        nascimento = @nascimento,
+                        idade = @idade,
+                        whatsapp = @whatsapp,
+                        rua = @rua,
+                        bairro = @bairro,
+                        cidade = @cidade,
+                        profissao = @profissao,
+                        escolaridade = @escolaridade,
+                        sexo = @sexo
+                        WHERE id_cliente = @id_cliente";
 
-                    using (MySqlCommand command = new MySqlCommand(query, connection))
-                    {
-                        // Adicionar os parâmetros
-                        command.Parameters.AddWithValue("@nome_completo", txtNOMECOMPLETO.Text);
-                        command.Parameters.AddWithValue("@cpf", txtCPF.Text);
-                        command.Parameters.AddWithValue("@nascimento", nascimentoFormatado); // Apenas data
-                        command.Parameters.AddWithValue("@idade", txtIDADE.Text);
-                        command.Parameters.AddWithValue("@whatsapp", txtWHATSAPP.Text);
-                        command.Parameters.AddWithValue("@rua", txtRUA.Text);
-                        command.Parameters.AddWithValue("@bairro", txtBAIRRO.Text);
-                        command.Parameters.AddWithValue("@cidade", txtCIDADE.Text);
-                        command.Parameters.AddWithValue("@profissao", txtPROFISSAO.Text);
-                        command.Parameters.AddWithValue("@escolaridade", txtESCOLARIDADE.Text);
-                        command.Parameters.AddWithValue("@sexo", txtSEXO.Text);
-                        command.Parameters.AddWithValue("@id_cliente", selectedId);
+                    MySqlCommand command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@nome_completo", txtNOMECOMPLETO.Text);
+                    command.Parameters.AddWithValue("@cpf", txtCPF.Text);
+                    command.Parameters.AddWithValue("@nascimento", nascimentoFormatado);
+                    command.Parameters.AddWithValue("@idade", txtIDADE.Text);
+                    command.Parameters.AddWithValue("@whatsapp", txtWHATSAPP.Text);
+                    command.Parameters.AddWithValue("@rua", txtRUA.Text);
+                    command.Parameters.AddWithValue("@bairro", txtBAIRRO.Text);
+                    command.Parameters.AddWithValue("@cidade", txtCIDADE.Text);
+                    command.Parameters.AddWithValue("@profissao", txtPROFISSAO.Text);
+                    command.Parameters.AddWithValue("@escolaridade", txtESCOLARIDADE.Text);
+                    command.Parameters.AddWithValue("@sexo", txtSEXO.Text);
+                    command.Parameters.AddWithValue("@id_cliente", selectedId);
 
-                        // Executar o comando
-                        int rowsAffected = command.ExecuteNonQuery();
-                        if (rowsAffected > 0)
-                        {
-                            MessageBox.Show("Registro atualizado com sucesso.");
-                            LoadData(); // Atualizar os dados no DataGridView
-                            ClearFields(); // Limpar os campos
-                        }
-                        else
-                        {
-                            MessageBox.Show("Nenhum registro foi atualizado.");
-                        }
-                    }
+                    int rowsAffected = command.ExecuteNonQuery();
+                    MessageBox.Show(rowsAffected > 0 ? "Registro atualizado com sucesso." : "Nenhum registro atualizado.");
+                    LoadData();
+                    ClearFields();
                 }
                 catch (Exception ex)
                 {
@@ -182,6 +146,7 @@ namespace SistemaOptometrico
                 }
             }
         }
+
 
         private void ClearFields()
         {
@@ -216,12 +181,14 @@ namespace SistemaOptometrico
         private void txtPesquisar_TextChanged(object sender, EventArgs e)
         {
             string pesquisa = txtPesquisar.Text.Trim();
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            using (MySqlConnection connection = conexao.GetConnection())
+
             {
                 try
                 {
                     connection.Open();
-                    string query = $"SELECT * FROM tb_precadastro WHERE nome_completo LIKE '%{pesquisa}%'";
+                    // Modifica a consulta para pesquisar tanto por nome quanto por CPF
+                    string query = $"SELECT * FROM tb_precadastro WHERE nome_completo LIKE '%{pesquisa}%' OR cpf LIKE '%{pesquisa}%'";
                     MySqlDataAdapter adapter = new MySqlDataAdapter(query, connection);
                     DataTable dataTable = new DataTable();
                     adapter.Fill(dataTable);
@@ -272,45 +239,34 @@ namespace SistemaOptometrico
         }
         private void AtualizarTodasAsIdades()
         {
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            using (MySqlConnection connection = conexao.GetConnection())
             {
-                conn.Open();
+                connection.Open();
 
-                // Consulta para obter todos os registros da tabela tb_precadastro
                 string selectQuery = "SELECT id_cliente, nascimento FROM tb_precadastro";
-
-                // Cria o comando e o DataReader
-                using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
+                using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, connection))
                 using (MySqlDataReader reader = selectCmd.ExecuteReader())
                 {
-                    // Lista para armazenar os dados a serem atualizados
                     List<(int idCliente, int idade)> dadosParaAtualizar = new List<(int idCliente, int idade)>();
 
                     while (reader.Read())
                     {
                         int idCliente = reader.GetInt32("id_cliente");
                         DateTime dataNascimento = reader.GetDateTime("nascimento");
-
-                        // Calcula a idade
                         int idade = CalcularIdade(dataNascimento);
-
-                        // Adiciona os dados à lista
                         dadosParaAtualizar.Add((idCliente, idade));
                     }
 
-                    // Fecha o DataReader antes de executar a atualização
                     reader.Close();
 
-                    // Atualiza a idade no banco de dados
                     string updateQuery = "UPDATE tb_precadastro SET idade = @idade WHERE id_cliente = @idCliente";
-                    using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                    using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, connection))
                     {
                         foreach (var dado in dadosParaAtualizar)
                         {
                             updateCmd.Parameters.Clear();
                             updateCmd.Parameters.AddWithValue("@idade", dado.idade);
                             updateCmd.Parameters.AddWithValue("@idCliente", dado.idCliente);
-
                             updateCmd.ExecuteNonQuery();
                         }
                     }
@@ -322,9 +278,7 @@ namespace SistemaOptometrico
         {
             DateTime hoje = DateTime.Today;
             int idade = hoje.Year - dataNascimento.Year;
-
-            if (dataNascimento > hoje.AddYears(-idade)) idade--;
-
+            if (dataNascimento.Date > hoje.AddYears(-idade)) idade--;
             return idade;
         }
 
@@ -336,5 +290,6 @@ namespace SistemaOptometrico
             LoadData(); // Atualizar os dados no DataGridView
 
         }
+        
     }
 }
