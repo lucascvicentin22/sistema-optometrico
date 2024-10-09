@@ -238,6 +238,40 @@ ORDER BY
             return dataTable;
         }
     }
+    public void InserirPreCadastro(string nomeCompleto, string cpf, DateTime nascimento, int idade, string whatsapp, string rua, string bairro, string cidade, string profissao, string escolaridade, string sexo)
+    {
+        string query = "INSERT INTO tb_precadastro (nome_completo, cpf, nascimento, idade, whatsapp, rua, bairro, cidade, profissao, escolaridade, sexo) " +
+                       "VALUES (@nome_completo, @cpf, @nascimento, @idade, @whatsapp, @rua, @bairro, @cidade, @profissao, @escolaridade, @sexo)";
+
+        try
+        {
+            OpenConnection();
+            using (MySqlCommand cmd = new MySqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@nome_completo", nomeCompleto);
+                cmd.Parameters.AddWithValue("@cpf", cpf);
+                cmd.Parameters.AddWithValue("@nascimento", nascimento.ToString("yyyy-MM-dd"));
+                cmd.Parameters.AddWithValue("@idade", idade);
+                cmd.Parameters.AddWithValue("@whatsapp", whatsapp);
+                cmd.Parameters.AddWithValue("@rua", rua);
+                cmd.Parameters.AddWithValue("@bairro", bairro);
+                cmd.Parameters.AddWithValue("@cidade", cidade);
+                cmd.Parameters.AddWithValue("@profissao", profissao);
+                cmd.Parameters.AddWithValue("@escolaridade", escolaridade);
+                cmd.Parameters.AddWithValue("@sexo", sexo);
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Erro ao inserir dados no pré-cadastro: " + ex.Message);
+        }
+        finally
+        {
+            CloseConnection();
+        }
+    }
 
     public void CloseConnection()
     {
