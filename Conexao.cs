@@ -1,18 +1,24 @@
-﻿using MySqlConnector;
+using MySqlConnector;
 using System;
 using System.Data;
-using System.Windows;
+using System.Configuration;
+using MySql.Data;
 
 public class Conexao
 {
     private MySqlConnection conn;
     private string connectionString;
+
     public Conexao()
     {
-        connectionString = "Server = localhost; Database = db_clinica; User ID = root; Password = 2707; ";
+        connectionString = ConfigurationManager.ConnectionStrings["MySqlConnectionString"].ConnectionString;
         conn = new MySqlConnection(connectionString);
-    }
 
+    }
+    public MySqlConnection GetConnection()
+    {
+        return new MySqlConnection(connectionString);
+    }
     public void OpenConnection()
     {
         if (conn.State == ConnectionState.Closed)
