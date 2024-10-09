@@ -87,9 +87,11 @@ namespace SistemaOptometrico
                 {
                     try
                     {
-                        using (MySqlConnection connection = new MySqlConnection(connectionString))
-                        {
-                            string queryCliente = @"
+                        // Criar uma instância da classe Conexao
+                        Conexao conexao = new Conexao();
+
+                        // Query para buscar os dados do cliente
+                        string queryCliente = @"
                     SELECT p.nome_completo, p.nascimento, p.idade, p.profissao, p.escolaridade, 
                            e.id_consultorio, c.nome AS nome_consultorio, c.endereco AS endereco_consultorio 
                     FROM tb_precadastro p
@@ -97,46 +99,44 @@ namespace SistemaOptometrico
                     LEFT JOIN tb_consultorio c ON e.id_consultorio = c.id_consultorio
                     WHERE p.id_cliente = @id_cliente";
 
-                            MySqlCommand commandCliente = new MySqlCommand(queryCliente, connection);
-                            commandCliente.Parameters.AddWithValue("@id_cliente", idCliente);
+                        // Usar o método BuscarDados da classe Conexao
+                        DataTable clienteData = conexao.BuscarDados(queryCliente);
 
-                            connection.Open();
-                            using (MySqlDataReader reader = commandCliente.ExecuteReader())
+                        // Adicionar o parâmetro à consulta
+                        conexao.ExecuteQuery(queryCliente, new MySqlParameter("@id_cliente", idCliente));
+
+                        if (clienteData.Rows.Count > 0)
+                        {
+                            DataRow reader = clienteData.Rows[0];
+
+                            // Preencher campos do cliente
+                            txtNOMECOMPLETO.Text = reader["nome_completo"].ToString();
+
+                            DateTime nascimento;
+                            if (DateTime.TryParse(reader["nascimento"].ToString(), out nascimento))
                             {
-                                if (reader.Read())
-                                {
-                                    // Preencher campos do cliente
-                                    txtNOMECOMPLETO.Text = reader["nome_completo"].ToString();
-
-                                    DateTime nascimento;
-                                    if (DateTime.TryParse(reader["nascimento"].ToString(), out nascimento))
-                                    {
-                                        txtNASCIMENTO.Text = nascimento.ToString("dd/MM/yyyy");
-                                    }
-                                    else
-                                    {
-                                        txtNASCIMENTO.Text = string.Empty;
-                                    }
-
-                                    txtIDADE.Text = reader["idade"].ToString();
-                                    txtPROFISSAO.Text = reader["profissao"].ToString();
-                                    txtESCOLARIDADE.Text = reader["escolaridade"].ToString();
-
-                                    // Preencher as ComboBox do consultório
-                                    cbNome.Text = reader["nome_consultorio"].ToString();
-                                    cbEndereco.Text = reader["endereco_consultorio"].ToString();
-                                }
-                                else
-                                {
-                                    LimparCamposCliente(); // Se não encontrar o cliente
-                                   
-                                }
+                                txtNASCIMENTO.Text = nascimento.ToString("dd/MM/yyyy");
                             }
+                            else
+                            {
+                                txtNASCIMENTO.Text = string.Empty;
+                            }
+
+                            txtIDADE.Text = reader["idade"].ToString();
+                            txtPROFISSAO.Text = reader["profissao"].ToString();
+                            txtESCOLARIDADE.Text = reader["escolaridade"].ToString();
+
+                            // Preencher as ComboBox do consultório
+                            cbNome.Text = reader["nome_consultorio"].ToString();
+                            cbEndereco.Text = reader["endereco_consultorio"].ToString();
+                        }
+                        else
+                        {
+                            LimparCamposCliente(); // Se não encontrar o cliente
                         }
 
                         // Buscar os exames do cliente
                         BuscarExamesPorCliente(idCliente);
-                       
                     }
                     catch (Exception ex)
                     {
@@ -319,69 +319,42 @@ namespace SistemaOptometrico
         }
         private void AtualizarDataGridView(int idCliente)
         {
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            try
             {
-                // Modifique a consulta para incluir as colunas desejadas com JOIN
-                string query = @"
-        SELECT 
-            e.id_exame, 
-            e.id_cliente, 
-            cli.nome_completo, 
-            e.data_do_exame, 
-            c.nome AS nome_consultorio, 
-            c.endereco, 
-            c.cidade 
-        FROM 
-            tb_exames e
-        JOIN 
-            tb_consultorio c ON e.id_consultorio = c.id_consultorio
-        JOIN 
-            tb_precadastro cli ON e.id_cliente = cli.id_cliente
-        WHERE 
-            e.id_cliente = @idCliente
-        ORDER BY 
-            e.data_do_exame DESC";
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
 
-                using (MySqlCommand command = new MySqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@idCliente", idCliente);
+                // Usar o método ObterExamesPorCliente para buscar os dados
+                DataTable dataTable = conexao.ObterExamesPorCliente(idCliente);
 
-                    try
-                    {
-                        connection.Open();
-                        MySqlDataAdapter adapter = new MySqlDataAdapter(command);
-                        DataTable dataTable = new DataTable();
-                        adapter.Fill(dataTable);
-                        dataGridView1.DataSource = dataTable;
+                dataGridView1.DataSource = dataTable;
 
-                        // Ajuste das colunas
-                        dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-                        dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                // Ajuste das colunas
+                dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+                dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-                        // Renomear colunas
-                        dataGridView1.Columns["id_cliente"].HeaderText = "CLIENTE";
-                        dataGridView1.Columns["nome_completo"].HeaderText = "NOME COMPLETO";
-                        dataGridView1.Columns["data_do_exame"].HeaderText = "DATA DOS EXAMES";
-                        dataGridView1.Columns["nome_consultorio"].HeaderText = "CONSULTÓRIO";
-                        dataGridView1.Columns["endereco"].HeaderText = "ENDEREÇO";
-                        dataGridView1.Columns["cidade"].HeaderText = "CIDADE";
+                // Renomear colunas
+                dataGridView1.Columns["id_cliente"].HeaderText = "CLIENTE";
+                dataGridView1.Columns["nome_completo"].HeaderText = "NOME COMPLETO";
+                dataGridView1.Columns["data_do_exame"].HeaderText = "DATA DOS EXAMES";
+                dataGridView1.Columns["nome_consultorio"].HeaderText = "CONSULTÓRIO";
+                dataGridView1.Columns["endereco"].HeaderText = "ENDEREÇO";
+                dataGridView1.Columns["cidade"].HeaderText = "CIDADE";
 
-                        // Ajustar largura das colunas
-                        dataGridView1.Columns["id_cliente"].Width = 50;
-                        dataGridView1.Columns["nome_completo"].Width = 300;
-                        dataGridView1.Columns["data_do_exame"].Width = 130;
-                        dataGridView1.Columns["nome_consultorio"].Width = 200;
-                        dataGridView1.Columns["endereco"].Width = 200;
-                        dataGridView1.Columns["cidade"].Width = 150;
+                // Ajustar largura das colunas
+                dataGridView1.Columns["id_cliente"].Width = 50;
+                dataGridView1.Columns["nome_completo"].Width = 300;
+                dataGridView1.Columns["data_do_exame"].Width = 130;
+                dataGridView1.Columns["nome_consultorio"].Width = 200;
+                dataGridView1.Columns["endereco"].Width = 200;
+                dataGridView1.Columns["cidade"].Width = 150;
 
-                        // Tornar a coluna id_exame visível se necessário, ou ocultá-la se não for necessária
-                        dataGridView1.Columns["id_exame"].Visible = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Erro ao buscar exames: " + ex.Message);
-                    }
-                }
+                // Tornar a coluna id_exame visível se necessário, ou ocultá-la se não for necessária
+                dataGridView1.Columns["id_exame"].Visible = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao atualizar o DataGridView: " + ex.Message);
             }
         }
         private int ObterIdCliente()
@@ -394,35 +367,27 @@ namespace SistemaOptometrico
             // Verifica se o input não está vazio
             if (!string.IsNullOrEmpty(inputIdCliente))
             {
-                using (MySqlConnection connection = new MySqlConnection(connectionString))
+                try
                 {
-                    // Consulta para obter o id_cliente
-                    string query = "SELECT id_cliente FROM tb_precadastro WHERE id_cliente = @idCliente";
+                    // Criar uma instância da classe Conexao
+                    Conexao conexao = new Conexao();
 
-                    using (MySqlCommand command = new MySqlCommand(query, connection))
+                    // Chamar o método ObterIdCliente da classe Conexao
+                    idCliente = conexao.ObterIdCliente(int.Parse(inputIdCliente));
+
+                    // Verifica se o cliente foi encontrado
+                    if (idCliente == 0)
                     {
-                        command.Parameters.AddWithValue("@idCliente", inputIdCliente); // Passa o valor do TextBox como parâmetro
-
-                        try
-                        {
-                            connection.Open();
-                            object result = command.ExecuteScalar(); // Executa a consulta e obtém o primeiro resultado
-
-                            // Verifica se o resultado não é nulo
-                            if (result != null)
-                            {
-                                idCliente = Convert.ToInt32(result); // Converte para int
-                            }
-                            else
-                            {
-                                MessageBox.Show("Cliente não encontrado.");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("Erro ao buscar ID do cliente: " + ex.Message);
-                        }
+                        MessageBox.Show("Cliente não encontrado.");
                     }
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Por favor, insira um ID de cliente válido.");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Erro ao buscar ID do cliente: " + ex.Message);
                 }
             }
             else
@@ -525,96 +490,109 @@ namespace SistemaOptometrico
         }
         private void BuscarExamesPorCliente(int idCliente)
         {
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            try
             {
-                string query = @"SELECT e.id_exame, e.id_cliente, e.nome_completo, e.data_do_exame, 
-                                c.nome AS nome_consultorio, c.endereco, c.cidade 
-                         FROM tb_exames e
-                         JOIN tb_consultorio c ON e.id_consultorio = c.id_consultorio
-                         WHERE e.id_cliente = @idCliente
-                         ORDER BY e.data_do_exame DESC";
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
 
-                using (MySqlCommand command = new MySqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@idCliente", idCliente);
+                // Usar o método ObterExamesPorCliente para buscar os dados
+                DataTable dataTable = conexao.ObterExamesPorCliente(idCliente);
 
-                    try
-                    {
-                        connection.Open();
-                        MySqlDataAdapter adapter = new MySqlDataAdapter(command);
-                        DataTable dataTable = new DataTable();
-                        adapter.Fill(dataTable);
-                        dataGridView1.DataSource = dataTable;
+                dataGridView1.DataSource = dataTable;
 
-                        // Ajuste das colunas
-                        dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-                        dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                // Ajuste das colunas
+                dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+                dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-                        // Renomear colunas
-                        dataGridView1.Columns["id_cliente"].HeaderText = "CLIENTE";
-                        dataGridView1.Columns["nome_completo"].HeaderText = "NOME COMPLETO";
-                        dataGridView1.Columns["data_do_exame"].HeaderText = "DATA DOS EXAMES";
-                        dataGridView1.Columns["nome_consultorio"].HeaderText = "CONSULTÓRIO";
-                        dataGridView1.Columns["endereco"].HeaderText = "ENDEREÇO";
-                        dataGridView1.Columns["cidade"].HeaderText = "CIDADE";
+                // Renomear colunas
+                dataGridView1.Columns["id_cliente"].HeaderText = "CLIENTE";
+                dataGridView1.Columns["nome_completo"].HeaderText = "NOME COMPLETO";
+                dataGridView1.Columns["data_do_exame"].HeaderText = "DATA DOS EXAMES";
+                dataGridView1.Columns["nome_consultorio"].HeaderText = "CONSULTÓRIO";
+                dataGridView1.Columns["endereco"].HeaderText = "ENDEREÇO";
+                dataGridView1.Columns["cidade"].HeaderText = "CIDADE";
 
-                        // Ajustar largura das colunas
-                        dataGridView1.Columns["id_cliente"].Width = 50;
-                        dataGridView1.Columns["nome_completo"].Width = 300;
-                        dataGridView1.Columns["data_do_exame"].Width = 130;
-                        dataGridView1.Columns["nome_consultorio"].Width = 200;
-                        dataGridView1.Columns["endereco"].Width = 200;
-                        dataGridView1.Columns["cidade"].Width = 150;
+                // Ajustar largura das colunas
+                dataGridView1.Columns["id_cliente"].Width = 50;
+                dataGridView1.Columns["nome_completo"].Width = 300;
+                dataGridView1.Columns["data_do_exame"].Width = 130;
+                dataGridView1.Columns["nome_consultorio"].Width = 200;
+                dataGridView1.Columns["endereco"].Width = 200;
+                dataGridView1.Columns["cidade"].Width = 150;
 
-                        // Tornar a coluna id_exames visível se necessário, ou ocultá-la se não for necessária
-                        dataGridView1.Columns["id_exame"].Visible = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Erro ao buscar exames: " + ex.Message);
-                    }
-                }
+                // Tornar a coluna id_exame visível se necessário, ou ocultá-la se não for necessária
+                dataGridView1.Columns["id_exame"].Visible = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao buscar exames: " + ex.Message);
             }
         }
 
         private DateTime dataExameSelecionado;
         private void LoadDataGridView()
         {
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            try
             {
-                try
-                {
-                    connection.Open();
-                    string query = "SELECT id_exame, data_do_exame, id_consultorio, nome_consultorio, endereco_consultorio, cidade_consultorio FROM tb_exames";
-                    MySqlCommand command = new MySqlCommand(query, connection);
-                    MySqlDataAdapter adapter = new MySqlDataAdapter(command);
-                    DataTable dataTable = new DataTable();
-                    adapter.Fill(dataTable);
-                    dataGridView1.DataSource = dataTable;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Erro ao carregar dados: {ex.Message}");
-                }
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
+
+                // Usar o método ObterExames para buscar os dados
+                DataTable dataTable = conexao.ObterExames();
+
+                // Atribuir o DataTable ao DataGridView
+                dataGridView1.DataSource = dataTable;
+
+                // Ajuste das colunas
+                dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+                dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+                // Renomear colunas, se necessário
+                dataGridView1.Columns["id_exame"].HeaderText = "ID EXAME";
+                dataGridView1.Columns["data_do_exame"].HeaderText = "DATA DO EXAME";
+                dataGridView1.Columns["id_consultorio"].HeaderText = "ID CONSULTÓRIO";
+                dataGridView1.Columns["nome_consultorio"].HeaderText = "NOME CONSULTÓRIO";
+                dataGridView1.Columns["endereco_consultorio"].HeaderText = "ENDEREÇO CONSULTÓRIO";
+                dataGridView1.Columns["cidade_consultorio"].HeaderText = "CIDADE CONSULTÓRIO";
+
+                // Ajustar largura das colunas
+                dataGridView1.Columns["id_exame"].Width = 50;
+                dataGridView1.Columns["data_do_exame"].Width = 130;
+                dataGridView1.Columns["id_consultorio"].Width = 50;
+                dataGridView1.Columns["nome_consultorio"].Width = 200;
+                dataGridView1.Columns["endereco_consultorio"].Width = 200;
+                dataGridView1.Columns["cidade_consultorio"].Width = 150;
+
+                // Ocultar a coluna id_exame se não for necessária
+                dataGridView1.Columns["id_exame"].Visible = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar dados: " + ex.Message);
             }
         }
         private void CarregarNomesConsultorios()
         {
-            string query = "SELECT DISTINCT nome FROM tb_consultorio";
-
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            try
             {
-                conn.Open();
-                MySqlCommand cmd = new MySqlCommand(query, conn);
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
 
-                using (MySqlDataReader reader = cmd.ExecuteReader())
+                // Usar o método para obter os nomes dos consultórios
+                DataTable dataTable = conexao.ObterNomesConsultorios();
+
+                // Limpar os itens existentes no ComboBox
+                cbNome.Items.Clear();
+
+                // Adicionar os nomes ao ComboBox
+                foreach (DataRow row in dataTable.Rows)
                 {
-                    cbNome.Items.Clear();
-                    while (reader.Read())
-                    {
-                        cbNome.Items.Add(reader["nome"].ToString());
-                    }
+                    cbNome.Items.Add(row["nome"].ToString());
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar nomes dos consultórios: " + ex.Message);
             }
         }
         private void txtIdConsultorio_TextChanged(object sender, EventArgs e)
@@ -627,39 +605,34 @@ namespace SistemaOptometrico
 
             if (!string.IsNullOrEmpty(nomeConsultorio))
             {
-                // Busca o id_consultorio, endereco e cidade com base no nome do consultório
-                string query = "SELECT id_consultorio, endereco, cidade FROM tb_consultorio WHERE nome = @nomeConsultorio";
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
 
-                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                // Usar o método para obter dados do consultório
+                DataTable dataTable = conexao.ObterDadosConsultorio(nomeConsultorio);
+
+                cbEndereco.Items.Clear();
+
+                if (dataTable.Rows.Count > 0)
                 {
-                    conn.Open();
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@nomeConsultorio", nomeConsultorio);
+                    DataRow row = dataTable.Rows[0];
 
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    // Preenche o txtIdConsultorio com o id_consultorio
+                    txtIdConsultorio.Text = row["id_consultorio"].ToString();
+
+                    // Adiciona o endereço no cbEndereco
+                    foreach (DataRow r in dataTable.Rows)
                     {
-                        cbEndereco.Items.Clear();
+                        cbEndereco.Items.Add(r["endereco"].ToString());
+                    }
 
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                // Preenche o txtIdConsultorio com o id_consultorio
-                                txtIdConsultorio.Text = reader["id_consultorio"].ToString();
+                    // Preenche a cidade no campo txtCidadeConsultorio
+                    txtCidadeConsultorio.Text = row["cidade"].ToString();
 
-                                // Adiciona o endereço no cbEndereco
-                                cbEndereco.Items.Add(reader["endereco"].ToString());
-
-                                // Preenche a cidade no campo txtCidadeConsultorio
-                                txtCidadeConsultorio.Text = reader["cidade"].ToString();
-                            }
-
-                            // Seleciona o primeiro endereço encontrado (caso haja mais de um)
-                            if (cbEndereco.Items.Count > 0)
-                            {
-                                cbEndereco.SelectedIndex = 0;
-                            }
-                        }
+                    // Seleciona o primeiro endereço encontrado (caso haja mais de um)
+                    if (cbEndereco.Items.Count > 0)
+                    {
+                        cbEndereco.SelectedIndex = 0;
                     }
                 }
             }
@@ -671,27 +644,21 @@ namespace SistemaOptometrico
 
             if (!string.IsNullOrEmpty(enderecoConsultorio) && !string.IsNullOrEmpty(nomeConsultorio))
             {
-                // Busca o id_consultorio e cidade correspondentes ao nome e endereço selecionados
-                string query = "SELECT id_consultorio, cidade FROM tb_consultorio WHERE nome = @nomeConsultorio AND endereco = @enderecoConsultorio";
+                // Criar uma instância da classe Conexao
+                Conexao conexao = new Conexao();
 
-                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                // Usar o método para obter dados do consultório
+                DataTable dataTable = conexao.ObterDadosConsultorioPorNomeEEndereco(nomeConsultorio, enderecoConsultorio);
+
+                if (dataTable.Rows.Count > 0)
                 {
-                    conn.Open();
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@nomeConsultorio", nomeConsultorio);
-                    cmd.Parameters.AddWithValue("@enderecoConsultorio", enderecoConsultorio);
+                    DataRow row = dataTable.Rows[0];
 
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            // Preenche o id_consultorio
-                            txtIdConsultorio.Text = reader["id_consultorio"].ToString();
+                    // Preenche o id_consultorio
+                    txtIdConsultorio.Text = row["id_consultorio"].ToString();
 
-                            // Preenche a cidade no campo txtCidadeConsultorio
-                            txtCidadeConsultorio.Text = reader["cidade"].ToString();
-                        }
-                    }
+                    // Preenche a cidade no campo txtCidadeConsultorio
+                    txtCidadeConsultorio.Text = row["cidade"].ToString();
                 }
             }
         }
