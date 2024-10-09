@@ -3,6 +3,7 @@ using System;
 using System.Data;
 using System.Configuration;
 using MySql.Data;
+using static iText.IO.Image.Jpeg2000ImageData;
 
 public class Conexao
 {
@@ -106,7 +107,27 @@ ORDER BY
     {
         using (MySqlConnection connection = new MySqlConnection(connectionString))
         {
-            string query = "SELECT id_exame, data_do_exame, id_consultorio, nome_consultorio, endereco_consultorio, cidade_consultorio FROM tb_exames";
+            // Consulta atualizada com join para obter dados da tabela tb_precadastro
+            string query = @"
+            SELECT 
+                e.id_exame, 
+                e.data_do_exame, 
+                e.id_consultorio, 
+                c.nome AS nome_consultorio, 
+                c.endereco AS endereco_consultorio, 
+                c.cidade AS cidade_consultorio,
+                p.nome_completo, 
+                p.nascimento, 
+                p.idade, 
+                p.profissao, 
+                p.escolaridade
+            FROM 
+                tb_exames e
+            JOIN 
+                tb_consultorio c ON e.id_consultorio = c.id_consultorio
+            JOIN 
+                tb_precadastro p ON e.id_cliente = p.id_cliente"; // Junção correta com tb_precadastro
+
             MySqlCommand command = new MySqlCommand(query, connection);
             MySqlDataAdapter adapter = new MySqlDataAdapter(command);
             DataTable dataTable = new DataTable();
@@ -124,31 +145,30 @@ ORDER BY
             return dataTable;
         }
     }
-    public DataTable BuscarDados(string query)
+    public DataTable BuscarDados(string query, params MySqlParameter[] parameters)
     {
-        DataTable dt = new DataTable();
-
-        using (MySqlConnection conn = new MySqlConnection(connectionString))
+        DataTable dataTable = new DataTable();
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
         {
-            try
+            using (MySqlCommand command = new MySqlCommand(query, connection))
             {
-                conn.Open();
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                // Adicionar os parâmetros ao comando
+                if (parameters != null)
                 {
-                    using (MySqlDataAdapter da = new MySqlDataAdapter(cmd))
-                    {
-                        da.Fill(dt);
-                    }
+                    command.Parameters.AddRange(parameters);
+                }
+
+                connection.Open();
+
+                using (MySqlDataAdapter adapter = new MySqlDataAdapter(command))
+                {
+                    adapter.Fill(dataTable);
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erro: " + ex.Message);
-            }
         }
-
-        return dt;
+        return dataTable;
     }
+
     public DataTable ObterNomesConsultorios()
     {
         using (MySqlConnection connection = new MySqlConnection(connectionString))
