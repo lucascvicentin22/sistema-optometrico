@@ -26,7 +26,104 @@ public class Conexao
             conn.Open();
         }
     }
+    public DataTable ObterExamesPorCliente(int idCliente)
+    {
+        DataTable dt = new DataTable();
+        string query = @"
+SELECT 
+    e.id_exame, 
+    e.id_cliente, 
+    cli.nome_completo, 
+    e.data_do_exame, 
+    c.nome AS nome_consultorio, 
+    c.endereco, 
+    c.cidade 
+FROM 
+    tb_exames e
+JOIN 
+    tb_consultorio c ON e.id_consultorio = c.id_consultorio
+JOIN 
+    tb_precadastro cli ON e.id_cliente = cli.id_cliente
+WHERE 
+    e.id_cliente = @idCliente
+ORDER BY 
+    e.data_do_exame DESC";
 
+        try
+        {
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                conn.Open();
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@idCliente", idCliente);
+                    using (MySqlDataAdapter da = new MySqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Erro ao buscar exames: " + ex.Message);
+        }
+
+        return dt; // Retorna o DataTable com os exames
+    }
+
+    public int ObterIdCliente(int idCliente)
+    {
+        int resultado = 0; // Valor padrão se não encontrado
+        string query = "SELECT id_cliente FROM tb_precadastro WHERE id_cliente = @idCliente";
+
+        try
+        {
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                conn.Open();
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@idCliente", idCliente);
+                    object res = cmd.ExecuteScalar();
+
+                    // Verifica se o resultado não é nulo
+                    if (res != null)
+                    {
+                        resultado = Convert.ToInt32(res); // Converte para int
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Erro ao buscar ID do cliente: " + ex.Message);
+        }
+
+        return resultado; // Retorna o ID do cliente encontrado ou 0 se não encontrado
+    }
+    public DataTable ObterExames()
+    {
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
+        {
+            string query = "SELECT id_exame, data_do_exame, id_consultorio, nome_consultorio, endereco_consultorio, cidade_consultorio FROM tb_exames";
+            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlDataAdapter adapter = new MySqlDataAdapter(command);
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                connection.Open();
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao obter exames: " + ex.Message);
+            }
+
+            return dataTable;
+        }
+    }
     public DataTable BuscarDados(string query)
     {
         DataTable dt = new DataTable();
@@ -51,6 +148,75 @@ public class Conexao
         }
 
         return dt;
+    }
+    public DataTable ObterNomesConsultorios()
+    {
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
+        {
+            string query = "SELECT DISTINCT nome FROM tb_consultorio";
+            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlDataAdapter adapter = new MySqlDataAdapter(command);
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                connection.Open();
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao obter nomes dos consultórios: " + ex.Message);
+            }
+
+            return dataTable;
+        }
+    }
+    public DataTable ObterDadosConsultorio(string nomeConsultorio)
+    {
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
+        {
+            string query = "SELECT id_consultorio, endereco, cidade FROM tb_consultorio WHERE nome = @nomeConsultorio";
+            MySqlCommand command = new MySqlCommand(query, connection);
+            command.Parameters.AddWithValue("@nomeConsultorio", nomeConsultorio);
+            MySqlDataAdapter adapter = new MySqlDataAdapter(command);
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                connection.Open();
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao obter dados do consultório: " + ex.Message);
+            }
+
+            return dataTable;
+        }
+    }
+    public DataTable ObterDadosConsultorioPorNomeEEndereco(string nomeConsultorio, string enderecoConsultorio)
+    {
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
+        {
+            string query = "SELECT id_consultorio, cidade FROM tb_consultorio WHERE nome = @nomeConsultorio AND endereco = @enderecoConsultorio";
+            MySqlCommand command = new MySqlCommand(query, connection);
+            command.Parameters.AddWithValue("@nomeConsultorio", nomeConsultorio);
+            command.Parameters.AddWithValue("@enderecoConsultorio", enderecoConsultorio);
+            MySqlDataAdapter adapter = new MySqlDataAdapter(command);
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                connection.Open();
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao obter dados do consultório: " + ex.Message);
+            }
+
+            return dataTable;
+        }
     }
 
     public void CloseConnection()
